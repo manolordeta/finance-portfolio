@@ -1,0 +1,51 @@
+# ============================================================
+# Portfolio Analysis Config
+# ============================================================
+# Define one or more named portfolios. Each run will process
+# all portfolios listed under `active` (or all if empty).
+# ============================================================
+
+active_portfolios:         # leave empty [] to run all
+  - base
+
+portfolios:
+  base:
+    tickers: [MSFT, META, AMZN, ASTS, RKLB, PLTR, MU, "ON", CX, PINFRA.MX]
+    start_date: "2021-01-01"
+    end_date: null
+    notes: "Watchlist principal — mix tech US + semiconductores + latam"
+    # Nota: CX = CEMEX ADR en NYSE, PINFRA.MX = PINFRA en BMV
+
+benchmark: SPY
+
+# ---- Risk Parameters -----------------------------------------------
+risk:
+  var_confidence: [0.95, 0.99]
+  var_methods:
+    - historical          # empirical quantile
+    - parametric          # Gaussian assumption
+    - monte_carlo         # simulation-based
+  horizon_days: [1, 5, 21]  # 1d, 1w, 1m
+  mc_simulations: 10000
+
+# ---- Optimization ---------------------------------------------------
+optimization:
+  objectives:
+    - max_sharpe
+    - min_variance
+    - risk_parity
+  weight_bounds: [0.0, 1.0]   # [min, max] per asset
+  risk_free_rate: 0.045        # annualized
+
+# ---- Data / Cache ---------------------------------------------------
+data:
+  cache_dir: "data/cache"
+  cache_expiry_days: 1        # re-fetch if cache is older than N days
+  frequency: "1d"
+
+# ---- Output ---------------------------------------------------------
+output:
+  reports_dir: "reports"
+  historical_dir: "data/historical"   # timestamped run results
+  save_html: true
+  save_csv: true
