@@ -1,0 +1,73 @@
+# ──────────────────────────────────────────────────────────────
+# Universe Configuration
+# ──────────────────────────────────────────────────────────────
+# Define los universos de acciones que el sistema monitorea.
+# Cambiar el active_universe para escalar el sistema.
+# ──────────────────────────────────────────────────────────────
+
+active_universe: watchlist
+
+universes:
+
+  # ── Watchlist curada (Fase 1-2) ────────────────────────────
+  watchlist:
+    description: "Lista curada del equipo — tickers seleccionados para analisis inicial"
+    source: mixed         # FMP para US, yfinance para MX
+    tickers:
+      us:
+        - MSFT
+        - META
+        - AMZN
+        - ASTS
+        - RKLB
+        - PLTR
+        - MU
+        - "ON"            # entrecomillado: YAML parsea ON como boolean
+        - CX              # CEMEX ADR
+        - NVDA
+        - MRNA
+        - CRM
+      mx:
+        - PINFRA.MX
+        - GFNORTEO.MX
+        - WALMEX.MX
+
+  # ── S&P 500 (Fase 3+) ─────────────────────────────────────
+  sp500:
+    description: "S&P 500 filtrado por liquidez — universo del screener masivo"
+    source: fmp
+    auto_fetch: true      # FMP endpoint /sp500_constituent
+    filters:
+      min_market_cap: 2.0e9      # > $2B
+      min_avg_volume: 500000     # > 500K shares/day
+      exclude_sectors: []        # ej: ["Utilities"] si quieres excluir
+
+  # ── BMV top liquidas (futuro) ──────────────────────────────
+  mx_stocks:
+    description: "Acciones mas liquidas de la Bolsa Mexicana de Valores"
+    source: yfinance
+    tickers:
+      mx:
+        - FEMSAUBD.MX
+        - GFNORTEO.MX
+        - WALMEX.MX
+        - AMXB.MX
+        - GMEXICOB.MX
+        - BIMBOA.MX
+        - CEMEXCPO.MX
+        - PINFRA.MX
+        - ASURB.MX
+        - AC.MX
+
+# ── Benchmark ────────────────────────────────────────────────
+benchmark: SPY
+
+# ── Factor proxies (para attribution en Fase 2) ─────────────
+factor_proxies:
+  market: SPY
+  size: IWM           # Russell 2000
+  value: IWD           # Russell 1000 Value
+  growth: IWF          # Russell 1000 Growth
+  momentum: MTUM       # iShares MSCI USA Momentum
+  quality: QUAL        # iShares MSCI USA Quality
+  low_vol: USMV        # iShares MSCI USA Min Vol

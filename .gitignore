@@ -1,0 +1,42 @@
+# ── Python ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ── Virtual environment ───────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Environment & secrets ─────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Data (generated, not source) ──────────────────────────────
+data/cache/*.parquet
+data/db/*.db
+data/historical/
+
+# ── IDE / Editor ──────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ── Jupyter ───────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ── Reports (generated) ──────────────────────────────────────
+reports/*/
+
+# ── OS ────────────────────────────────────────────────────────
+Thumbs.db

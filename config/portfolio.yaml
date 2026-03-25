@@ -6,7 +6,7 @@
 # ============================================================
 
 active_portfolios:         # leave empty [] to run all
-  - base
+  - test_nvda_mrna_crm
 
 portfolios:
   base:
@@ -15,6 +15,12 @@ portfolios:
     end_date: null
     notes: "Watchlist principal — mix tech US + semiconductores + latam"
     # Nota: CX = CEMEX ADR en NYSE, PINFRA.MX = PINFRA en BMV
+
+  test_nvda_mrna_crm:
+    tickers: [NVDA, MRNA, CRM]
+    start_date: "2021-01-01"
+    end_date: null
+    notes: "Test — NVIDIA + Moderna + Salesforce"
 
 benchmark: SPY
 
