@@ -152,17 +152,23 @@ class FMPClient:
 
     # ── Earnings ──────────────────────────────────────────────
 
+    def get_earnings(self, ticker: str, limit: int = 20) -> list[dict]:
+        """
+        Per-ticker earnings history: epsActual vs epsEstimated + revenue.
+        Endpoint: /stable/earnings?symbol=X
+        Key fields: date, epsActual, epsEstimated, revenueActual, revenueEstimated
+        """
+        return self._get("earnings", {"symbol": ticker, "limit": limit})
+
     def get_earnings_calendar(
-        self, symbol: str | None = None, limit: int = 50,
-        from_date: str | None = None, to_date: str | None = None,
+        self, from_date: str | None = None, to_date: str | None = None,
+        limit: int = 200,
     ) -> list[dict]:
         """
-        Earnings calendar with actual vs estimated EPS/revenue.
-        Use as earnings surprise source: epsActual vs epsEstimated.
+        Market-wide earnings calendar (does NOT filter by ticker).
+        Use get_earnings() for per-ticker data.
         """
         params: dict[str, Any] = {"limit": limit}
-        if symbol:
-            params["symbol"] = symbol
         if from_date:
             params["from"] = from_date
         if to_date:
@@ -206,14 +212,49 @@ class FMPClient:
             return data[0]
         return {}
 
-    # ── News (FMP articles) ───────────────────────────────────
+    # ── News ──────────────────────────────────────────────────
+
+    def get_stock_news_latest(
+        self, tickers: list[str] | None = None,
+        pages: int = 5, per_page: int = 250,
+    ) -> list[dict]:
+        """
+        Fetch recent stock news from the stock-latest feed.
+        Endpoint: /stable/news/stock-latest (paginated, market-wide)
+
+        If tickers is provided, filters client-side to only those symbols.
+        Returns list of articles with: symbol, title, text, publishedDate, site, url.
+        """
+        ticker_set = set(tickers) if tickers else None
+        all_articles: list[dict] = []
+
+        for page in range(pages):
+            data = self._get(
+                "news/stock-latest",
+                {"page": page, "limit": per_page},
+            )
+            if not data:
+                break
+            if ticker_set:
+                filtered = [d for d in data if d.get("symbol") in ticker_set]
+                all_articles.extend(filtered)
+            else:
+                all_articles.extend(data)
+
+        return all_articles
+
+    def get_stock_news(self, ticker: str, limit: int = 50) -> list[dict]:
+        """
+        Convenience: get news for a single ticker from the latest feed.
+        Searches up to 10 pages (2500 articles) to find matches.
+        """
+        articles = self.get_stock_news_latest(
+            tickers=[ticker], pages=10, per_page=250,
+        )
+        return articles[:limit]
 
     def get_fmp_articles(self, limit: int = 50) -> list[dict]:
-        """
-        FMP-authored market articles with analysis.
-        NOTE: /stable/ plan doesn't have per-ticker stock_news.
-              Use fmp-articles for general market intel.
-        """
+        """FMP-authored market articles with analysis."""
         return self._get("fmp-articles", {"limit": limit})
 
     # ── S&P 500 Constituents ──────────────────────────────────

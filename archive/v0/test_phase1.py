@@ -121,8 +121,8 @@ def main():
             fcf_y = m.get("freeCashFlowYield")
             print(f"    Metrics: EV/EBITDA={ev_ebitda}, FCFYield={fcf_y}")
 
-        # Earnings calendar (used as surprise source)
-        earnings = client.get_earnings_calendar(symbol=ticker, limit=12)
+        # Earnings (per-ticker history)
+        earnings = client.get_earnings(ticker, limit=12)
         if earnings:
             for e in earnings:
                 db.upsert_earnings(ticker, {
@@ -133,7 +133,6 @@ def main():
                     "revenue": e.get("revenueActual"),
                     "revenueEstimated": e.get("revenueEstimated"),
                 })
-            # Show latest with actual data
             with_actual = [e for e in earnings if e.get("epsActual") is not None]
             if with_actual:
                 lat = with_actual[0]
@@ -141,8 +140,21 @@ def main():
                 if lat.get("epsEstimated") and lat["epsEstimated"] != 0:
                     s = (lat["epsActual"] - lat["epsEstimated"]) / abs(lat["epsEstimated"])
                     surp = f" surprise={s:+.1%}"
-                print(f"    Earnings:{len(earnings)} dates, "
-                      f"latest actual: EPS={lat.get('epsActual')}{surp}")
+                print(f"    Earnings:{len(with_actual)} reported, "
+                      f"latest: EPS={lat.get('epsActual')}{surp}")
+
+        # News (per-ticker)
+        news = client.get_stock_news(ticker, limit=10)
+        if news:
+            for article in news:
+                db.upsert_news(ticker, {
+                    "publishedDate": article.get("publishedDate"),
+                    "title": article.get("title"),
+                    "url": article.get("url"),
+                    "site": article.get("site"),
+                    "text": article.get("text"),
+                })
+            print(f"    News:    {len(news)} articles (latest: {news[0].get('site', '?')})")
 
         # Analyst estimates
         estimates = client.get_analyst_estimates(ticker, period="quarterly", limit=4)

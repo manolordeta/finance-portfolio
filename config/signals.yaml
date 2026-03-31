@@ -1,0 +1,489 @@
+# ══════════════════════════════════════════════════════════════════════
+#  QUANTITATIVE INVESTMENT SYSTEM — Master Configuration
+#  All parameters controllable from this file.
+#  Last updated: 2026-03-26
+# ══════════════════════════════════════════════════════════════════════
+
+
+# ── Active Watchlist ─────────────────────────────────────────────────
+# Tickers in active portfolio or under consideration.
+# The alert system monitors ONLY these tickers for events.
+# Recalculated each run to optimize LLM token usage.
+
+watchlist:
+  # Acciones actualmente en portafolio (or considering to buy)
+  active:
+    - MU
+    - CIEN
+    - STX
+    - LITE
+    - CVNA
+    - WDC
+    - FIX         # entrecomillado: YAML parsea ON como boolean
+    - SATS
+    - TER
+    - ALB      # CEMEX ADR
+
+  # Acciones mexicanas (via yfinance, no FMP fundamentals)
+  mx:
+    - PINFRA.MX
+    - GFNORTEO.MX
+    - WALMEX.MX
+
+  # Auto-detected from ranking: top N tickers not in active
+  # These get added to watchlist for monitoring
+  auto_add_top_n: 10
+
+
+# ── Signal Registry ──────────────────────────────────────────────────
+# Each signal has:
+#   enabled:    whether to include in composite
+#   weight:     "auto" = proportional to IC, or fixed float
+#   ic_21d:     Information Coefficient at 21-day horizon (backtested)
+#   ic_63d:     Information Coefficient at 63-day horizon (backtested)
+#   t_stat:     t-statistic of IC (>2.0 = significant, >3.0 = strong)
+#   verdict:    STRONG | PASS | WEAK | FAIL (from Research Protocol)
+#   notes:      interpretation and caveats
+
+signals:
+
+  # ── Technical Signals ──────────────────────────────────────────
+  technical:
+
+    - name: momentum_12_1
+      enabled: true
+      weight: auto
+      ic_21d: 0.024
+      ic_63d: 0.023
+      t_stat_21d: 4.86
+      t_stat_63d: 4.06
+      verdict: STRONG
+      notes: >
+        Medium-term momentum with short-term reversal filtered.
+        Jegadeesh & Titman (1993). Works in both bull and bear.
+        One of the most robust signals in equity markets.
+
+    - name: momentum_1m
+      enabled: true
+      weight: auto
+      ic_21d: 0.009
+      ic_63d: -0.015
+      t_stat_21d: 1.88
+      t_stat_63d: -2.67
+      verdict: WEAK
+      notes: >
+        Short-term momentum. Marginal at 21d, REVERSES at 63d.
+        Use only for 21d horizon. Captures short-term trend continuation.
+
+    - name: rsi_14
+      enabled: false
+      weight: auto
+      ic_21d: -0.008
+      ic_63d: 0.002
+      t_stat_21d: -1.73
+      t_stat_63d: 0.35
+      verdict: FAIL
+      notes: >
+        RSI as mean-reversion signal does NOT work cross-sectionally
+        on SP500. Oversold stocks keep falling. Disabled.
+
+    - name: macd_signal
+      enabled: true
+      weight: auto
+      ic_21d: 0.019
+      ic_63d: -0.013
+      t_stat_21d: 3.49
+      t_stat_63d: -2.17
+      verdict: PASS
+      notes: >
+        Trend change detection. Works at 21d but reverses at 63d.
+        Use only for short horizon. Captures momentum shifts.
+
+    - name: bollinger_position
+      enabled: false
+      weight: auto
+      ic_21d: -0.010
+      ic_63d: 0.007
+      t_stat_21d: -1.86
+      t_stat_63d: 1.40
+      verdict: FAIL
+      notes: >
+        Mean reversion from Bollinger Bands does not work cross-sectionally.
+        Same lesson as RSI: don't buy dips in cross-section. Disabled.
+
+    - name: volume_ratio
+      enabled: true
+      weight: auto
+      ic_21d: 0.022
+      ic_63d: 0.009
+      t_stat_21d: 4.15
+      t_stat_63d: 1.56
+      verdict: PASS
+      notes: >
+        Unusual volume predicts short-term returns. Likely captures
+        institutional interest before price moves. Works at 21d.
+
+  # ── Fundamental Signals ────────────────────────────────────────
+  fundamental:
+
+    - name: pe_relative
+      enabled: true
+      weight: auto
+      ic_21d: 0.003
+      ic_63d: 0.008
+      t_stat_21d: 0.60
+      t_stat_63d: 1.45
+      verdict: WEAK
+      notes: >
+        Value signal. Weak alone but contributes to composite.
+        P/E vs sector median. Better at longer horizons.
+
+    - name: ev_ebitda_relative
+      enabled: true
+      weight: auto
+      ic_21d: 0.005
+      ic_63d: 0.010
+      t_stat_21d: 0.95
+      t_stat_63d: 1.80
+      verdict: WEAK
+      notes: >
+        Capital-structure-neutral value. Similar to P/E but
+        better for cross-industry comparison.
+
+    - name: fcf_yield
+      enabled: true
+      weight: auto
+      ic_21d: 0.008
+      ic_63d: 0.015
+      t_stat_21d: 1.55
+      t_stat_63d: 2.75
+      verdict: PASS
+      notes: >
+        Cash generation relative to price. One of the better
+        fundamental signals. Stronger at 63d horizon.
+
+    - name: roe
+      enabled: true
+      weight: auto
+      ic_21d: 0.006
+      ic_63d: 0.012
+      t_stat_21d: 1.20
+      t_stat_63d: 2.10
+      verdict: PASS
+      notes: >
+        Quality factor. Novy-Marx (2013). ROE captures
+        profitability premium. Stronger at medium horizon.
+
+    - name: gross_margin_delta
+      enabled: true
+      weight: auto
+      ic_21d: 0.004
+      ic_63d: 0.009
+      t_stat_21d: 0.75
+      t_stat_63d: 1.50
+      verdict: WEAK
+      notes: >
+        Margin improvement signal. Weak alone but adds
+        diversification to composite.
+
+    - name: earnings_surprise
+      enabled: true
+      weight: auto
+      ic_21d: 0.015
+      ic_63d: 0.020
+      t_stat_21d: 2.80
+      t_stat_63d: 3.50
+      verdict: STRONG
+      notes: >
+        Post-Earnings Announcement Drift (PEAD).
+        Bernard & Thomas (1989). One of the most robust
+        anomalies in finance. Market under-reacts to earnings.
+
+    - name: revenue_growth
+      enabled: true
+      weight: auto
+      ic_21d: 0.010
+      ic_63d: 0.018
+      t_stat_21d: 1.90
+      t_stat_63d: 3.20
+      verdict: STRONG
+      notes: >
+        Growth factor. Revenue growth predicts future returns
+        especially at medium horizons.
+
+    - name: debt_equity_inv
+      enabled: true
+      weight: auto
+      ic_21d: 0.005
+      ic_63d: 0.008
+      t_stat_21d: 0.90
+      t_stat_63d: 1.40
+      verdict: WEAK
+      notes: >
+        Solvency / quality. Low leverage premium.
+        Weak alone, contributes to quality composite.
+
+  # ── Valuation Signals (price vs own history) ───────────────────
+  valuation:
+
+    - name: golden_cross
+      enabled: true
+      weight: auto
+      ic_21d: 0.014
+      ic_63d: 0.030
+      t_stat_21d: 2.31
+      t_stat_63d: 5.87
+      verdict: STRONG
+      notes: >
+        SMA50/SMA200 trend. Strongest valuation signal.
+        Captures long-term trend. Works at both horizons.
+
+    - name: mean_reversion_63d
+      enabled: true
+      weight: auto
+      ic_21d: -0.006
+      ic_63d: 0.019
+      t_stat_21d: -1.23
+      t_stat_63d: 3.86
+      verdict: STRONG_63D_ONLY
+      notes: >
+        Z-score of price vs 63d mean. ONLY works at 63d.
+        At 21d it has NEGATIVE IC (momentum dominates short-term).
+        Include only in 63d composite.
+
+    - name: price_vs_sma50
+      enabled: true
+      weight: auto
+      ic_21d: -0.010
+      ic_63d: 0.015
+      t_stat_21d: -1.86
+      t_stat_63d: 2.64
+      verdict: PASS_63D_ONLY
+      notes: >
+        Below SMA50 = opportunity, but only at 63d horizon.
+        At 21d the falling knife keeps falling. 63d only.
+
+    - name: price_vs_21d
+      enabled: true
+      weight: auto
+      ic_21d: -0.008
+      ic_63d: 0.012
+      t_stat_21d: -1.52
+      t_stat_63d: 2.32
+      verdict: PASS_63D_ONLY
+      notes: >
+        Short-term mean reversion. Like all mean reversion,
+        only works at longer horizons (63d). Disabled for 21d.
+
+    # DISABLED — negative IC at both horizons
+    - name: price_vs_sma200
+      enabled: false
+      ic_21d: -0.019
+      ic_63d: -0.022
+      verdict: FAIL
+      notes: "Below SMA200 predicts MORE falling, not recovery. Disabled."
+
+    - name: drawdown_from_high
+      enabled: false
+      ic_21d: -0.006
+      ic_63d: 0.008
+      verdict: FAIL
+      notes: "Drawdown buying does not work reliably. Falling knife effect."
+
+    - name: distance_from_low
+      enabled: false
+      ic_21d: -0.035
+      ic_63d: -0.054
+      verdict: FAIL
+      notes: "Strongly NEGATIVE IC. Being near the low predicts more losses. Never buy just because 'it's near the bottom'."
+
+  # ── Sentiment (LLM) ───────────────────────────────────────────
+  sentiment:
+
+    - name: llm_sentiment
+      enabled: true
+      weight: auto
+      ic_21d: null     # cannot backtest (LLM look-ahead bias)
+      ic_63d: null     # measuring forward from 2026-03-26
+      verdict: MEASURING
+      notes: >
+        DeepSeek-chat scoring of FMP news articles.
+        Cannot be backtested due to LLM training data leakage.
+        Running in forward-measurement mode since 2026-03-26.
+        Will evaluate IC after 3 months of live data.
+      model: deepseek-chat
+      prompt_version: v1.0
+
+
+# ── Composite Scoring ────────────────────────────────────────────────
+composite:
+  # How to weight signals
+  weighting: auto          # "auto" = proportional to abs(IC), "equal" = 1/N
+  horizon: 21d             # primary horizon for ranking
+  min_signals: 5           # minimum signals available to rank a ticker
+
+  # Horizon-specific signal inclusion
+  # Some signals only work at 63d — exclude from 21d composite
+  horizon_overrides:
+    21d:
+      exclude:
+        - mean_reversion_63d    # negative IC at 21d
+        - price_vs_sma50        # negative IC at 21d
+        - price_vs_21d          # negative IC at 21d
+    63d:
+      exclude:
+        - momentum_1m           # reverses at 63d
+        - macd_signal           # reverses at 63d
+
+
+# ── Ranking ──────────────────────────────────────────────────────────
+ranking:
+  universe: sp500            # sp500 | watchlist
+  top_n_display: 25          # show top N in reports
+  bottom_n_display: 15       # show bottom N in reports
+  quintile_threshold: 0.20   # top 20% = buy zone
+
+
+# ── Alert System ─────────────────────────────────────────────────────
+alerts:
+  # LLM alert runs ONLY on watchlist tickers (not full SP500)
+  # Saves tokens: ~12 tickers × $0.0003 = $0.004/run vs $0.15 for 500
+  enabled: true
+  model: deepseek-chat
+  frequency: daily
+
+  # Event types that trigger alerts
+  event_types:
+    - earnings_surprise       # beat/miss > 10%
+    - analyst_upgrade         # upgrade/downgrade
+    - management_change       # CEO/CFO change
+    - regulatory              # FDA, antitrust, etc.
+    - insider_trading         # unusual insider activity
+    - guidance_change         # guidance raise/cut
+    - partnership             # major deal/partnership
+
+  # Severity thresholds
+  severity:
+    high: 0.7       # absolute sentiment score > 0.7 → HIGH alert
+    medium: 0.4     # > 0.4 → MEDIUM alert
+    low: 0.0        # anything non-zero → LOW alert
+
+
+# ── LLM Configuration ───────────────────────────────────────────────
+llm:
+  # Batch scoring (full universe, weekly)
+  batch:
+    provider: deepseek
+    model: deepseek-chat
+    temperature: 0.1
+    max_tokens: 500
+    delay_between_calls: 0.5    # seconds
+
+  # Deep analysis (top tickers, on-demand)
+  deep:
+    provider: deepseek          # switch to anthropic for production
+    model: deepseek-chat
+    temperature: 0.2
+    max_tokens: 1000
+
+  # Cost estimates
+  cost_per_ticker: 0.00025      # USD, approximate for deepseek-chat
+  batch_500_cost: 0.125         # USD for full SP500 run
+
+
+# ── Scheduling ───────────────────────────────────────────────────────
+schedule:
+  daily_run_time: "18:00"       # Mexico City time (after market close)
+  timezone: "America/Mexico_City"
+
+  daily_tasks:
+    - refresh_prices            # yfinance OHLCV
+    - compute_technical_signals
+    - compute_valuation_signals
+    - compute_composite_ranking
+    - run_alerts_watchlist      # LLM alerts for active tickers only
+
+  weekly_tasks:                 # Sundays
+    - refresh_fundamentals      # FMP quarterly data check
+    - batch_sentiment_sp500     # LLM sentiment full universe
+    - generate_weekly_report
+
+  monthly_tasks:
+    - recalculate_signal_ics    # forward IC measurement
+    - update_signal_weights     # recalibrate if needed
+
+
+# ── Investment Policy ────────────────────────────────────────────────
+policy:
+  max_positions: 15             # maximum simultaneous positions
+  max_weight_per_stock: 0.10    # 10% max in single name
+  max_weight_per_sector: 0.30   # 30% max in single sector
+  rebalance_frequency: monthly  # monthly | quarterly
+
+  # Entry rules
+  entry:
+    min_composite_percentile: 0.20  # must be in top 20% of ranking
+    require_human_confirmation: true # socio must approve
+    min_signals_positive: 3         # at least 3 signals > 0
+
+  # Exit rules
+  exit:
+    stop_loss_pct: -0.15            # -15% from entry → sell
+    ranking_drop_threshold: 0.60    # drops below top 60% → review
+    high_severity_alert: review     # review | auto_sell
+    max_hold_months: 12             # review if held > 12 months
+
+  # Risk
+  risk:
+    risk_free_rate: 0.045           # current US treasury ~4.5%
+    benchmark: SPY
+
+
+# ── Portfolio Optimization (GARCH + Black-Litterman) ────────────────
+# Used by run_portfolio.py
+portfolio_optimization:
+
+  # Constraints
+  max_weight_per_position: 1    # max 15% in any single stock
+  min_weight_per_position: 0.00    # 0 = optimizer can exclude
+  max_weight_per_sector: 1      # max 35% in any single sector
+
+  # Minimum weight floors for high-conviction tickers
+  # Prevents optimizer from excluding top-ranked stocks entirely
+  min_weight_floors:
+    top_5: 0.03                    # top 5 in ranking → at least 3%
+    top_10: 0.02                   # top 10 → at least 2%
+    top_20: 0.01                   # top 20 → at least 1%
+
+  # Default optimization method
+  # Options: max_sharpe | target_vol
+  default_method: max_sharpe
+
+  # Target volatility (used when method = target_vol)
+  # Set this to your desired annualized portfolio volatility
+  target_volatility_pct: 35.0      # 35% annualized
+
+  # Black-Litterman parameters
+  black_litterman:
+    tau: 0.05                      # prior uncertainty (0.02-0.10, lower = trust market more)
+    risk_aversion: 2.5             # δ in CAPM (higher = more risk averse)
+    view_scale: 0.15               # max expected excess return from score ±1
+
+  # GARCH parameters
+  garch:
+    model: gjr-garch               # gjr-garch | garch
+    p: 1                           # GARCH lag
+    o: 1                           # GJR asymmetry lag (0 for standard GARCH)
+    q: 1                           # GARCH variance lag
+    covariance_method: garch_adjusted  # garch_adjusted | shrinkage | sample
+
+  # Efficient frontier
+  efficient_frontier:
+    n_points: 25                   # number of points on the curve
+    show_unconstrained: true       # also plot frontier without constraints
+    show_individual_stocks: true   # plot individual stock risk/return
+
+  # Discover mode
+  discover:
+    max_positions: 15              # top N from ranking to consider
+    include_watchlist: false       # also include watchlist tickers

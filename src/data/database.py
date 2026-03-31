@@ -168,6 +168,28 @@ CREATE TABLE IF NOT EXISTS human_views (
 );
 CREATE INDEX IF NOT EXISTS idx_hv_ticker ON human_views(ticker);
 
+-- Alert cache (one set of alerts per day, not regenerated)
+CREATE TABLE IF NOT EXISTS alert_cache (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    alert_date      TEXT    NOT NULL,   -- YYYY-MM-DD
+    ticker          TEXT    NOT NULL,
+    severity        TEXT    NOT NULL,   -- HIGH | MEDIUM | LOW | NONE
+    action          TEXT    NOT NULL,   -- HOLD | REVIEW | CONSIDER_EXIT | etc.
+    headline        TEXT,
+    analysis        TEXT,
+    sentiment_score REAL,
+    events_json     TEXT,               -- JSON array
+    risk_factors_json TEXT,
+    positive_factors_json TEXT,
+    rank            INTEGER,
+    total_ranked    INTEGER,
+    ret_1m          TEXT,
+    model           TEXT,
+    created_at      TEXT    NOT NULL,
+    UNIQUE(alert_date, ticker)
+);
+CREATE INDEX IF NOT EXISTS idx_alert_date ON alert_cache(alert_date);
+
 -- Signal evaluation results (research protocol)
 CREATE TABLE IF NOT EXISTS signal_evaluations (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -631,6 +653,84 @@ class MarketDB:
             )
 
     # ── Bulk queries ──────────────────────────────────────────
+
+    def get_news(self, ticker: str, limit: int = 10) -> list[dict]:
+        """Get recent news articles for a ticker, most recent first."""
+        with self._conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT * FROM news
+                WHERE ticker = ?
+                ORDER BY published_at DESC LIMIT ?
+                """,
+                (ticker, limit),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    # ── Alert Cache ───────────────────────────────────────────
+
+    def get_cached_alerts(self, alert_date: str) -> list[dict]:
+        """Get cached alerts for a specific date. Returns empty list if none."""
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM alert_cache WHERE alert_date = ? ORDER BY "
+                "CASE severity WHEN 'HIGH' THEN 0 WHEN 'MEDIUM' THEN 1 "
+                "WHEN 'LOW' THEN 2 ELSE 3 END",
+                (alert_date,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def save_alert_cache(self, alert_date: str, alert) -> None:
+        """Save a single alert to cache. Uses UNIQUE(alert_date, ticker)."""
+        import json as _json
+        with self._conn() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO alert_cache
+                    (alert_date, ticker, severity, action, headline, analysis,
+                     sentiment_score, events_json, risk_factors_json,
+                     positive_factors_json, rank, total_ranked, ret_1m,
+                     model, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    alert_date,
+                    alert.ticker,
+                    alert.severity,
+                    alert.action,
+                    alert.headline,
+                    alert.analysis,
+                    alert.sentiment_score,
+                    _json.dumps(alert.events_detected),
+                    _json.dumps(alert.risk_factors),
+                    _json.dumps(alert.positive_factors),
+                    alert.rank,
+                    alert.total,
+                    alert.ret_1m,
+                    getattr(alert, 'model', ''),
+                    _now(),
+                ),
+            )
+
+    def has_alerts_for_date(self, alert_date: str) -> bool:
+        """Check if alerts exist for this date."""
+        with self._conn() as conn:
+            count = conn.execute(
+                "SELECT COUNT(*) FROM alert_cache WHERE alert_date = ?",
+                (alert_date,),
+            ).fetchone()[0]
+        return count > 0
+
+    def upsert_sentiment(self, ticker: str, data: dict) -> None:
+        """Save aggregate sentiment score for a ticker (stored as a signal)."""
+        self.upsert_signal(
+            ticker=ticker,
+            signal_date=_now()[:10],
+            signal_name="llm_sentiment",
+            signal_value=data.get("score", 0.0),
+            score=data.get("score", 0.0),
+            horizon="medium",
+        )
 
     def get_all_fundamentals_for_universe(
         self, tickers: list[str], statement_type: str = "income",

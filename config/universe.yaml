@@ -15,22 +15,21 @@ universes:
     source: mixed         # FMP para US, yfinance para MX
     tickers:
       us:
-        - MSFT
-        - META
-        - AMZN
-        - ASTS
-        - RKLB
-        - PLTR
         - MU
-        - "ON"            # entrecomillado: YAML parsea ON como boolean
-        - CX              # CEMEX ADR
-        - NVDA
-        - MRNA
-        - CRM
-      mx:
-        - PINFRA.MX
-        - GFNORTEO.MX
-        - WALMEX.MX
+        - CIEN
+        - STX
+        - LITE
+        - CVNA
+        - WDC
+        - FIX         # entrecomillado: YAML parsea ON como boolean
+        - SATS
+        - TER
+        - ALB
+
+      #mx:
+      #  - PINFRA.MX
+      #  - GFNORTEO.MX
+      #  - WALMEX.MX
 
   # ── S&P 500 (Fase 3+) ─────────────────────────────────────
   sp500:
