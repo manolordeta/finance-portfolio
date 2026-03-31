@@ -1,72 +1,38 @@
-# ──────────────────────────────────────────────────────────────
-# Universe Configuration
-# ──────────────────────────────────────────────────────────────
-# Define los universos de acciones que el sistema monitorea.
-# Cambiar el active_universe para escalar el sistema.
-# ──────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════
+#  Universe Definitions
+#  Defines the pools of tickers available for screening.
+#  The ACTIVE watchlist lives in signals.yaml (single source of truth).
+# ══════════════════════════════════════════════════════════════════════
 
-active_universe: watchlist
+# Which universe to use for the ranking screener
+active_universe: sp500
 
 universes:
 
-  # ── Watchlist curada (Fase 1-2) ────────────────────────────
-  watchlist:
-    description: "Lista curada del equipo — tickers seleccionados para analisis inicial"
-    source: mixed         # FMP para US, yfinance para MX
-    tickers:
-      us:
-        - MU
-        - CIEN
-        - STX
-        - LITE
-        - CVNA
-        - WDC
-        - FIX         # entrecomillado: YAML parsea ON como boolean
-        - SATS
-        - TER
-        - ALB
-
-      #mx:
-      #  - PINFRA.MX
-      #  - GFNORTEO.MX
-      #  - WALMEX.MX
-
-  # ── S&P 500 (Fase 3+) ─────────────────────────────────────
+  # S&P 500 — primary screening universe
   sp500:
-    description: "S&P 500 filtrado por liquidez — universo del screener masivo"
+    description: "S&P 500 — main universe for ranking and backtesting"
     source: fmp
-    auto_fetch: true      # FMP endpoint /sp500_constituent
+    auto_fetch: true
     filters:
-      min_market_cap: 2.0e9      # > $2B
-      min_avg_volume: 500000     # > 500K shares/day
-      exclude_sectors: []        # ej: ["Utilities"] si quieres excluir
+      min_market_cap: 2.0e9
+      min_avg_volume: 500000
 
-  # ── BMV top liquidas (futuro) ──────────────────────────────
-  mx_stocks:
-    description: "Acciones mas liquidas de la Bolsa Mexicana de Valores"
-    source: yfinance
-    tickers:
-      mx:
-        - FEMSAUBD.MX
-        - GFNORTEO.MX
-        - WALMEX.MX
-        - AMXB.MX
-        - GMEXICOB.MX
-        - BIMBOA.MX
-        - CEMEXCPO.MX
-        - PINFRA.MX
-        - ASURB.MX
-        - AC.MX
+  # Mexican stocks (supplementary, via yfinance)
+  # mx_stocks:
+  #   description: "Top liquid BMV stocks"
+  #   source: yfinance
+  #   tickers:
+  #     - PINFRA.MX
+  #     - GFNORTEO.MX
+  #     - WALMEX.MX
 
-# ── Benchmark ────────────────────────────────────────────────
-benchmark: SPY
-
-# ── Factor proxies (para attribution en Fase 2) ─────────────
+# Factor proxies for attribution analysis
 factor_proxies:
   market: SPY
-  size: IWM           # Russell 2000
-  value: IWD           # Russell 1000 Value
-  growth: IWF          # Russell 1000 Growth
-  momentum: MTUM       # iShares MSCI USA Momentum
-  quality: QUAL        # iShares MSCI USA Quality
-  low_vol: USMV        # iShares MSCI USA Min Vol
+  size: IWM
+  value: IWD
+  growth: IWF
+  momentum: MTUM
+  quality: QUAL
+  low_vol: USMV

@@ -375,18 +375,19 @@ def main():
     with open("config/signals.yaml") as f:
         cfg = yaml.safe_load(f)
 
-    po = cfg.get("portfolio_optimization", {})
-    bl_cfg = po.get("black_litterman", {})
-    garch_cfg = po.get("garch", {})
-    ef_cfg = po.get("efficient_frontier", {})
-    disc_cfg = po.get("discover", {})
-    policy = cfg.get("policy", {})
+    po = cfg.get("portfolio", {})
+    global_cfg = cfg.get("global", {})
+
+    # Aliases for backward compat
+    bl_cfg = po  # B-L params are now flat in portfolio section
+    ef_cfg = po  # frontier params too
+    garch_cfg = po
 
     # Apply config with CLI overrides
-    max_weight = po.get("max_weight_per_position", 0.15)
-    max_sector = po.get("max_weight_per_sector", 0.35)
-    risk_free_rate = policy.get("risk", {}).get("risk_free_rate", 0.045)
-    max_positions = args.max_positions or disc_cfg.get("max_positions", 15)
+    max_weight = po.get("max_weight", 0.10)
+    max_sector = po.get("max_sector_weight", 0.35)
+    risk_free_rate = global_cfg.get("risk_free_rate", 0.045)
+    max_positions = args.max_positions or po.get("max_positions", 15)
     target_vol_pct = args.target_vol or (
         po.get("target_volatility_pct") if po.get("default_method") == "target_vol" else None
     )
@@ -483,8 +484,8 @@ def main():
     posterior_returns = black_litterman(
         covariance=cov, views=views, view_confidence=confidence,
         risk_free_rate=risk_free_rate,
-        tau=bl_cfg.get("tau", 0.05),
-        risk_aversion=bl_cfg.get("risk_aversion", 2.5),
+        tau=po.get("tau", 0.05),
+        risk_aversion=po.get("risk_aversion", 2.5),
     )
 
     # Max Sharpe (always compute as reference)
@@ -507,7 +508,7 @@ def main():
         result = max_sharpe_result
 
     # Efficient frontier — constrained
-    n_frontier = ef_cfg.get("n_points", 25)
+    n_frontier = po.get("frontier_points", 25)
     log.info("  Computing efficient frontier (constrained)...")
     frontier = compute_efficient_frontier(
         expected_returns=posterior_returns, covariance=cov,
@@ -518,7 +519,7 @@ def main():
 
     # Efficient frontier — unconstrained (no caps, for comparison)
     frontier_unconstrained = []
-    if ef_cfg.get("show_unconstrained", True):
+    if po.get("show_unconstrained", True):
         log.info("  Computing efficient frontier (unconstrained)...")
         frontier_unconstrained = compute_efficient_frontier(
             expected_returns=posterior_returns, covariance=cov,
@@ -542,7 +543,7 @@ def main():
     print(f"    Vol (ann.):     {result.portfolio_vol:.1%}")
     print(f"    Sharpe:         {result.portfolio_sharpe:.2f}")
     print(f"    Positions:      {len(result.weights)}")
-    print(f"    Config:         max_wt={max_weight:.0%} max_sect={max_sector:.0%} tau={bl_cfg.get('tau', 0.05)}")
+    print(f"    Config:         max_wt={max_weight:.0%} max_sect={max_sector:.0%} tau={po.get('tau', 0.05)}")
 
     if target_vol_pct:
         print(f"    Target vol:     {target_vol_pct:.0f}%")

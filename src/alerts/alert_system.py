@@ -186,16 +186,16 @@ class AlertSystem:
         with open(config_path) as f:
             self.config = yaml.safe_load(f)
 
+        global_cfg = self.config.get("global", {})
         alert_cfg = self.config.get("alerts", {})
-        llm_cfg = self.config.get("llm", {}).get("batch", {})
 
-        self.model = llm_cfg.get("model", "deepseek-chat")
-        self.temperature = llm_cfg.get("temperature", 0.1)
-        self.max_tokens = 600
-        self.cost_per_ticker = self.config.get("llm", {}).get("cost_per_ticker", 0.00025)
+        self.model = global_cfg.get("llm_model", "deepseek-chat")
+        self.temperature = alert_cfg.get("temperature", 0.1)
+        self.max_tokens = alert_cfg.get("max_tokens", 600)
+        self.cost_per_ticker = 0.00025  # ~$0.25 per 1M tokens deepseek
 
         # Initialize LLM client
-        provider = llm_cfg.get("provider", "deepseek")
+        provider = global_cfg.get("llm_provider", "deepseek")
         if provider == "deepseek":
             api_key = os.getenv("DEEPSEEK_API_KEY", "")
             base_url = "https://api.deepseek.com"
