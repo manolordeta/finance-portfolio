@@ -138,10 +138,13 @@ def main():
     parser.add_argument("--train-months", type=int, default=12)
     parser.add_argument("--test-months", type=int, default=3)
     parser.add_argument("--top-pct", type=float, default=0.20)
+    parser.add_argument("--top-n", default=None,
+                        help="Also test B-L on top N tickers directly (e.g., '10,15')")
     parser.add_argument("--reg-alpha", type=float, default=0.5)
     args = parser.parse_args()
 
     max_weight_list = [float(x) for x in args.max_weights.split(",")]
+    top_n_list = [int(x) for x in args.top_n.split(",")] if args.top_n else []
     train_days = args.train_months * 21
     test_days = args.test_months * 21
 
@@ -210,9 +213,14 @@ def main():
     # ── Walk-forward ──────────────────────────────────────────
     print("[3/3] Walk-forward backtest...")
 
-    model_names = ["equal"] + [f"bl_{int(w*100)}pct" for w in max_weight_list] + ["spy"]
+    model_names = ["equal"] + [f"bl_{int(w*100)}pct" for w in max_weight_list]
+    # Add top-N models: B-L optimized on ONLY the top N tickers (not top quintile)
+    for tn in top_n_list:
+        model_names.append(f"top{tn}_eq")
+        model_names.append(f"top{tn}_bl")
+    model_names.append("spy")
     results = {m: [] for m in model_names}
-    all_trades = {m: [] for m in model_names if m != "spy"}  # trade log
+    all_trades = {m: [] for m in model_names if m != "spy"}
 
     i = train_days
     period = 0
@@ -265,6 +273,17 @@ def main():
                 bl_w = optimize_bl(scores, train_rets, top_idx, max_weight=mw)
                 bl_weights_dict[f"bl_{int(mw*100)}pct"] = bl_w
 
+            # Top-N models: optimize on ONLY the top N tickers
+            topn_weights = {}
+            for tn in top_n_list:
+                topn_idx = sorted_valid[:tn]  # just the top N, not top quintile
+                # Equal weight on top N
+                topn_eq = np.ones(len(topn_idx)) / len(topn_idx)
+                topn_weights[f"top{tn}_eq"] = (topn_idx, topn_eq)
+                # B-L on top N (unconstrained since N is small)
+                topn_bl = optimize_bl(scores, train_rets, topn_idx, max_weight=1.0/max(tn//3, 1))
+                topn_weights[f"top{tn}_bl"] = (topn_idx, topn_bl)
+
             # Log trades
             for model_name, w in [("equal", eq_w)] + list(bl_weights_dict.items()):
                 top10 = np.argsort(-w)[:10]
@@ -288,12 +307,21 @@ def main():
             for day in range(rb, rb_end):
                 if day >= len(ret_daily) or day >= len(spy_daily):
                     break
-                dr = np.nan_to_num(ret_daily[day, top_idx], nan=0)
                 spy_r = spy_daily[day] if np.isfinite(spy_daily[day]) else 0
 
+                # Equal weight on top quintile
+                dr = np.nan_to_num(ret_daily[day, top_idx], nan=0)
                 results["equal"].append(float(np.sum(eq_w * dr)))
+
+                # B-L on top quintile
                 for mw_name, bl_w in bl_weights_dict.items():
                     results[mw_name].append(float(np.sum(bl_w * dr)))
+
+                # Top-N models
+                for tn_name, (tn_idx, tn_w) in topn_weights.items():
+                    dr_tn = np.nan_to_num(ret_daily[day, tn_idx], nan=0)
+                    results[tn_name].append(float(np.sum(tn_w * dr_tn)))
+
                 results["spy"].append(spy_r)
 
         if period % 3 == 0:
@@ -328,9 +356,12 @@ def main():
         dd = ((eq - eq.cummax()) / eq.cummax()).min()
         alpha = total - spy_total if model != "spy" else 0
 
-        labels = {"equal": "GICS Equal Weight", "spy": "SPY Buy & Hold"}
+        labels = {"equal": "GICS EqWt (top quintile)", "spy": "SPY Buy & Hold"}
         for mw in max_weight_list:
-            labels[f"bl_{int(mw*100)}pct"] = f"GICS + B-L (max {mw:.0%})"
+            labels[f"bl_{int(mw*100)}pct"] = f"GICS+BL quintile (max {mw:.0%})"
+        for tn in top_n_list:
+            labels[f"top{tn}_eq"] = f"Top {tn} Equal Weight"
+            labels[f"top{tn}_bl"] = f"Top {tn} + B-L Optimized"
 
         print(f"  {labels.get(model, model):30s} {total*100:+7.1f}% {ann*100:+7.1f}% "
               f"{sharpe:+7.2f} {dd*100:+7.1f}% {alpha*100:+7.1f}%")

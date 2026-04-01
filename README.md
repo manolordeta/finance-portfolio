@@ -16,10 +16,15 @@ PRODUCCIÓN (correr regularmente):
   python3 run_daily.py --refresh-alerts
     → Forzar regenerar alertas (ignora cache del día)
 
-
   python3 run_portfolio.py --mode discover
     → Optimizar portafolio B-L con top del ranking
     → Correr cuando quieras invertir/rebalancear
+
+Optimización de Portafolio con BL
+──────────────────────────────────────────────────────────────
+
+  python run_portfolio.py --mode quintile
+    → Optimizar pesos con cuartil 20%
 
   python3 run_portfolio.py --mode watchlist
     → Optimizar pesos solo para tu watchlist actual

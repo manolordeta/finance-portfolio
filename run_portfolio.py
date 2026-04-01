@@ -358,8 +358,8 @@ def generate_portfolio_pdf(
 
 def main():
     parser = argparse.ArgumentParser(description="MM Quant Capital — Portfolio Optimizer")
-    parser.add_argument("--mode", choices=["watchlist", "discover"], default="watchlist",
-                        help="watchlist=your tickers, discover=top from ranking")
+    parser.add_argument("--mode", choices=["watchlist", "discover", "quintile"], default="watchlist",
+                        help="watchlist=your tickers, discover=top N, quintile=top 20%% (best backtest)")
     parser.add_argument("--tickers", type=str, default=None,
                         help="Comma-separated tickers (overrides --mode)")
     parser.add_argument("--target-vol", type=float, default=None,
@@ -445,6 +445,11 @@ def main():
         target_tickers = [t.strip().upper() for t in args.tickers.split(",")]
     elif args.mode == "watchlist":
         target_tickers = cfg.get("watchlist", {}).get("active", [])
+    elif args.mode == "quintile":
+        # Top 20% of universe — the strategy that backtested +136%/yr
+        n_quintile = max(1, len(ranking_rows) // 5)
+        target_tickers = [r[0] for r in ranking_rows[:n_quintile]]
+        log.info("  Quintile mode: top %d of %d tickers", n_quintile, len(ranking_rows))
     else:
         target_tickers = [r[0] for r in ranking_rows[:max_positions]]
 
