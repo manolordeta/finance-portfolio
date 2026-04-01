@@ -25,9 +25,13 @@ watchlist:
     - CVNA
     - WDC
     - FIX
-    - SATS
+    - BSX
     - TER
     - ALB
+    - MELI
+    - SATS
+    - CF
+    - LEN
   auto_add_top_n: 10              # also monitor top N from ranking
 
 
@@ -155,9 +159,10 @@ signals:
 
   sentiment:
     - name: llm_sentiment
-      enabled: true
-      ic_21d: null               # forward measurement only
+      enabled: false             # DISABLED until forward IC is measured
+      ic_21d: null               # forward measurement started 2026-03-26
       verdict: MEASURING
+      # Re-enable after 3 months of forward data confirms IC > 0.03
 
 
 # ── Composite Scoring ───────────────────────────────────────────────
@@ -183,7 +188,7 @@ ranking:
 # ── Portfolio Optimization (run_portfolio.py) ───────────────────────
 portfolio:
   max_weight: 0.10                # per position
-  max_sector_weight: 0.35         # per sector
+  max_sector_weight: 0.50         # per sector
   max_positions: 15               # for discover mode
   default_method: max_sharpe      # max_sharpe | target_vol
   target_volatility_pct: 35.0     # when method = target_vol

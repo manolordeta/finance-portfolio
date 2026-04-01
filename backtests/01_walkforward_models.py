@@ -317,7 +317,8 @@ def main():
         eq = (1 + rets).cumprod()
         total = eq.iloc[-1] - 1
         ann = (eq.iloc[-1]) ** (1 / max(years, 0.1)) - 1
-        sharpe = (rets.mean() / rets.std()) * np.sqrt(252) if rets.std() > 0 else 0
+        rf_daily = 0.045 / 252
+        sharpe = ((rets.mean() - rf_daily) / rets.std()) * np.sqrt(252) if rets.std() > 0 else 0
         dd = ((eq - eq.cummax()) / eq.cummax()).min()
         alpha = total - spy_total if model != "spy" else 0
 

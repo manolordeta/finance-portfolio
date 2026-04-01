@@ -180,9 +180,11 @@ def optimize_weights(
             for s, indices in sector_groups.items():
                 constraints.append(cp.sum(w[indices]) <= max_sector_weight)
 
-        if method == "max_sharpe":
-            # Maximize return / risk (via reformulation)
-            # Maximize ret - 0.5 * risk_aversion * risk
+        if method in ("max_sharpe", "mean_variance"):
+            # Mean-variance utility maximization: E[r] - 0.5 * δ * σ²
+            # Note: this approximates max Sharpe but is not identical.
+            # True max Sharpe requires fractional programming (Dinkelbach).
+            # With constraints, the difference is minimal in practice.
             objective = cp.Maximize(ret - 0.5 * 2.5 * risk)
         elif method == "min_variance":
             objective = cp.Minimize(risk)

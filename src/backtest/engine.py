@@ -365,7 +365,8 @@ class WalkForwardEngine:
         ann_factor = 252 / len(port_returns) if len(port_returns) > 0 else 1
         ann_return = (1 + total_return) ** ann_factor - 1
         ann_vol = port_returns.std() * np.sqrt(252) if len(port_returns) > 1 else 0
-        sharpe = ann_return / ann_vol if ann_vol > 0 else 0
+        rf = 0.045  # risk-free rate
+        sharpe = (ann_return - rf) / ann_vol if ann_vol > 0 else 0
 
         # Max drawdown
         cum = (1 + port_returns).cumprod()
